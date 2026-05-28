@@ -1,0 +1,1 @@
+Get-FileHash .\backup.zip -Algorithm MD5
