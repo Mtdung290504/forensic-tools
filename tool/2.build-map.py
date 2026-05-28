@@ -5,7 +5,7 @@ import shutil
 from collections import defaultdict
 from datetime import datetime
 
-from config import VOLATILITY_PATH, OUTPUT_DIR
+from config import VOLATILITY_PATH, OUTPUT_DIR, ORPHAN_WHITELIST
 
 PSTREE_JSON = OUTPUT_DIR / "pstree.json"
 PSSCAN_JSON = OUTPUT_DIR / "psscan.json"
@@ -19,7 +19,6 @@ MD_OUTPUT = OUTPUT_DIR / "Process_Map.md"
 
 
 def clean_old_workspace():
-    """Chỉ dọn dẹp ĐÚNG những file/thư mục do tool sinh ra"""
     print("[+] Đang dọn dẹp workspace cũ...")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -54,21 +53,16 @@ def run_volatility(image_path):
 
 
 # ---------------------------------------------------------------------------
-# Flatten pstree (nested __children → flat dict keyed by PID)
+# Flatten pstree
 # ---------------------------------------------------------------------------
 
 
 def flatten_pstree(nodes, result=None):
-    """
-    Đệ quy flatten cấu trúc __children của pstree.
-    Trả về dict { str(PID): record_dict }
-    """
     if result is None:
         result = {}
     for node in nodes:
         pid = str(node.get("PID", "N/A"))
         children = node.get("__children", [])
-        # Lưu bản ghi không có __children (tránh rác trong JSON chi tiết)
         clean = {k: v for k, v in node.items() if k != "__children"}
         result[pid] = clean
         if children:
@@ -77,18 +71,12 @@ def flatten_pstree(nodes, result=None):
 
 
 # ---------------------------------------------------------------------------
-# Duplicate-name index  (chỉ gắn cờ khi cùng tên MÀ KHÁC PATH)
+# Duplicate-name index (cùng tên, khác path)
 # ---------------------------------------------------------------------------
 
 
 def build_duplicate_index(flat_processes):
-    """
-    Trả về set các PID bị gắn cờ trùng tên–khác path.
-    Logic: nhóm theo ImageFileName (lower), nếu trong nhóm có ≥2 path
-    khác nhau (normalize về lower, bỏ null) → tất cả thành viên nhóm đó
-    bị đánh dấu.
-    """
-    name_groups = defaultdict(list)  # name → [(pid, path), ...]
+    name_groups = defaultdict(list)
     for pid, rec in flat_processes.items():
         name = str(rec.get("ImageFileName", "")).lower()
         path = str(rec.get("Path") or "").lower().strip()
@@ -96,10 +84,8 @@ def build_duplicate_index(flat_processes):
 
     flagged = set()
     for name, members in name_groups.items():
-        # Tập hợp các path không rỗng
-        paths = {path for _, path in members if path}
+        paths = {p for _, p in members if p}
         if len(paths) > 1:
-            # Có ít nhất 2 path khác nhau trong cùng tên → đánh dấu tất cả
             for pid, _ in members:
                 flagged.add(pid)
 
@@ -127,26 +113,18 @@ def format_time(t_str):
 
 
 def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
-    """
-    Dựng cây từ flat_pstree (visible processes).
-    Tiến trình tàng hình trong psscan nhưng không có trong pstree
-    được thêm vào dưới dạng nút đơn lẻ ở cuối.
-    """
+    processes = dict(flat_pstree)
 
-    processes = dict(flat_pstree)  # copy để không mutate
-
-    # Thêm tiến trình tàng hình từ psscan vào processes nếu chưa có
+    # Thêm tiến trình tàng hình từ psscan
     for pid in psscan_pids:
         if pid not in processes:
             processes[pid] = {"PID": pid, "ImageFileName": "???", "_hidden": True}
 
-    # Xây children_map
     children_map = defaultdict(list)
     for pid, rec in processes.items():
         ppid = str(rec.get("PPID", "N/A"))
         children_map[ppid].append(pid)
 
-    # Tìm roots
     roots = [
         pid
         for pid, rec in processes.items()
@@ -160,33 +138,32 @@ def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
         rec = processes[node_pid]
         ppid = str(rec.get("PPID", "N/A"))
         name = str(rec.get("ImageFileName", "Unknown"))
-        path = str(rec.get("Path") or "N/A")
-        cmd = str(rec.get("Cmd") or "N/A")
+        node_path = str(rec.get("Path") or "").lower().strip()
         ctime = format_time(rec.get("CreateTime", "N/A"))
 
         flags = []
 
-        # Luật 1: Tàng hình — có trong psscan nhưng không trong pstree
+        # Luật 1: Tàng hình
         if node_pid not in pstree_pids:
-            flags.append("🔴 `[TÀNG HÌNH]`")
+            flags.append("🔴 `[Tàng hình]`")
 
-        # Luật 2: Mồ côi — PPID không tồn tại, ngoại trừ System và PPID=0
+        # Luật 2: Mồ côi — lọc qua whitelist tên + path
         is_orphan = ppid not in processes and node_pid != "4" and ppid != "0"
         if is_orphan:
-            flags.append(f"🟠 `[MỒ CÔI - Cha {ppid} mất tích]`")
+            valid_paths = ORPHAN_WHITELIST.get(name.lower(), set())
+            if node_path not in valid_paths:
+                flags.append(f"🟠 `[Cha: {ppid}]`")
 
-        # Luật 3: Trùng tên khác path
+        # Luật 3: Trùng tên, khác path
         if node_pid in duplicate_flagged:
-            flags.append("🟡 `[TRÙNG TÊN - KHÁC PATH]`")
+            flags.append("🟡 `[Trùng tên]`")
 
         status = (" " + " ".join(flags)) if flags else ""
 
-        # Ghi raw node JSON
+        # Ghi raw node
         raw_file = f"pid_{node_pid}.json"
         detail = dict(rec)
         detail["_flags"] = flags
-        detail["_path_resolved"] = path
-        detail["_cmd"] = cmd
         with open(RAW_NODES_DIR / raw_file, "w", encoding="utf-8") as f:
             json.dump(detail, f, indent=4, ensure_ascii=False)
 
@@ -230,18 +207,13 @@ def build_cross_view_map():
         print(f"[-] Lỗi: {e}")
         return
 
-    # Flatten pstree
     flat_pstree = flatten_pstree(pstree_data)
-
-    # PID set từ psscan (flat, không nested)
     psscan_pids = {str(rec.get("PID")) for rec in psscan_data}
-
-    # Index trùng tên–khác path (chỉ dựa trên pstree vì có Path)
     duplicate_flagged = build_duplicate_index(flat_pstree)
 
     md = "# PROCESS TREE VIEW\n\n"
-    md += "> **Tips:** `Ctrl` + Click `[Chi tiết]` để xem data thô của từng tiến trình.\n\n"
-    md += "> **Cờ:** 🔴 Tàng hình | 🟠 Mồ côi | 🟡 Trùng tên–khác path\n\n"
+    md += "> **Tips:** `Ctrl` + Click `[Chi tiết]` để xem data thô.\n\n"
+    md += "> **Cờ:** 🔴 Tàng hình | 🟠 Cha không tồn tại | 🟡 Trùng tên–khác path\n\n"
     md += build_process_tree(flat_pstree, psscan_pids, duplicate_flagged)
 
     with open(MD_OUTPUT, "w", encoding="utf-8") as f:

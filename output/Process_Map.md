@@ -1,18 +1,18 @@
 # PROCESS TREE VIEW
 
-> **Tips:** `Ctrl` + Click `[Chi tiết]` để xem data thô của từng tiến trình.
+> **Tips:** `Ctrl` + Click `[Chi tiết]` để xem data thô.
 
-> **Cờ:** 🔴 Tàng hình | 🟠 Mồ côi | 🟡 Trùng tên–khác path
+> **Cờ:** 🔴 Tàng hình | 🟠 Cha không tồn tại | 🟡 Trùng tên–khác path
 
 ├── **System** (PID: 4) — *11/12/2019 13:41:25* | [Chi tiết](./raw_nodes/pid_4.json)
 │   └── **smss.exe** (PID: 248) — *11/12/2019 13:41:25* | [Chi tiết](./raw_nodes/pid_248.json)
 │       └── **psxss.exe** (PID: 376) — *11/12/2019 13:41:33* | [Chi tiết](./raw_nodes/pid_376.json)
-├── **csrss.exe** (PID: 320) 🟠 `[MỒ CÔI - Cha 312 mất tích]` — *11/12/2019 13:41:32* | [Chi tiết](./raw_nodes/pid_320.json)
-├── **csrss.exe** (PID: 368) 🟠 `[MỒ CÔI - Cha 360 mất tích]` — *11/12/2019 13:41:33* | [Chi tiết](./raw_nodes/pid_368.json)
+├── **csrss.exe** (PID: 320) — *11/12/2019 13:41:32* | [Chi tiết](./raw_nodes/pid_320.json)
+├── **csrss.exe** (PID: 368) — *11/12/2019 13:41:33* | [Chi tiết](./raw_nodes/pid_368.json)
 │   ├── **conhost.exe** (PID: 2260) — *11/12/2019 14:37:54* | [Chi tiết](./raw_nodes/pid_2260.json)
 │   └── **conhost.exe** (PID: 2692) — *11/12/2019 14:34:54* | [Chi tiết](./raw_nodes/pid_2692.json)
-├── **winlogon.exe** (PID: 416) 🟠 `[MỒ CÔI - Cha 360 mất tích]` — *11/12/2019 13:41:34* | [Chi tiết](./raw_nodes/pid_416.json)
-├── **wininit.exe** (PID: 424) 🟠 `[MỒ CÔI - Cha 312 mất tích]` — *11/12/2019 13:41:34* | [Chi tiết](./raw_nodes/pid_424.json)
+├── **winlogon.exe** (PID: 416) — *11/12/2019 13:41:34* | [Chi tiết](./raw_nodes/pid_416.json)
+├── **wininit.exe** (PID: 424) — *11/12/2019 13:41:34* | [Chi tiết](./raw_nodes/pid_424.json)
 │   ├── **services.exe** (PID: 484) — *11/12/2019 13:41:35* | [Chi tiết](./raw_nodes/pid_484.json)
 │   │   ├── **taskhost.exe** (PID: 296) — *11/12/2019 14:32:24* | [Chi tiết](./raw_nodes/pid_296.json)
 │   │   ├── **svchost.exe** (PID: 472) — *11/12/2019 13:41:47* | [Chi tiết](./raw_nodes/pid_472.json)
@@ -42,13 +42,13 @@
 │   │   └── **taskhost.exe** (PID: 2908) — *11/12/2019 14:37:13* | [Chi tiết](./raw_nodes/pid_2908.json)
 │   ├── **lsass.exe** (PID: 492) — *11/12/2019 13:41:35* | [Chi tiết](./raw_nodes/pid_492.json)
 │   └── **lsm.exe** (PID: 500) — *11/12/2019 13:41:35* | [Chi tiết](./raw_nodes/pid_500.json)
-├── **explorer.exe** (PID: 604) 🟠 `[MỒ CÔI - Cha 2016 mất tích]` — *11/12/2019 14:32:25* | [Chi tiết](./raw_nodes/pid_604.json)
+├── **explorer.exe** (PID: 604) — *11/12/2019 14:32:25* | [Chi tiết](./raw_nodes/pid_604.json)
 │   ├── **DumpIt.exe** (PID: 796) — *11/12/2019 14:37:54* | [Chi tiết](./raw_nodes/pid_796.json)
 │   ├── **VBoxTray.exe** (PID: 1844) — *11/12/2019 14:32:35* | [Chi tiết](./raw_nodes/pid_1844.json)
 │   ├── **cmd.exe** (PID: 1984) — *11/12/2019 14:34:54* | [Chi tiết](./raw_nodes/pid_1984.json)
 │   └── **mspaint.exe** (PID: 2424) — *11/12/2019 14:35:14* | [Chi tiết](./raw_nodes/pid_2424.json)
-├── **explorer.exe** (PID: 2504) 🟠 `[MỒ CÔI - Cha 3000 mất tích]` — *11/12/2019 14:37:14* | [Chi tiết](./raw_nodes/pid_2504.json)
+├── **explorer.exe** (PID: 2504) — *11/12/2019 14:37:14* | [Chi tiết](./raw_nodes/pid_2504.json)
 │   ├── **WinRAR.exe** (PID: 1512) — *11/12/2019 14:37:23* | [Chi tiết](./raw_nodes/pid_1512.json)
 │   └── **VBoxTray.exe** (PID: 2304) — *11/12/2019 14:37:14* | [Chi tiết](./raw_nodes/pid_2304.json)
-├── **csrss.exe** (PID: 2760) 🟠 `[MỒ CÔI - Cha 2680 mất tích]` — *11/12/2019 14:37:05* | [Chi tiết](./raw_nodes/pid_2760.json)
-└── **winlogon.exe** (PID: 2808) 🟠 `[MỒ CÔI - Cha 2680 mất tích]` — *11/12/2019 14:37:05* | [Chi tiết](./raw_nodes/pid_2808.json)
+├── **csrss.exe** (PID: 2760) — *11/12/2019 14:37:05* | [Chi tiết](./raw_nodes/pid_2760.json)
+└── **winlogon.exe** (PID: 2808) — *11/12/2019 14:37:05* | [Chi tiết](./raw_nodes/pid_2808.json)
