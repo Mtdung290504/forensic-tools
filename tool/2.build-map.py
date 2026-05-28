@@ -113,6 +113,7 @@ def format_time(t_str):
 
 
 def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
+    flagged_pids = {}  # { pid: [flags] } — export cho bước sau
     processes = dict(flat_pstree)
 
     # Thêm tiến trình tàng hình từ psscan
@@ -145,7 +146,7 @@ def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
 
         # Luật 1: Tàng hình
         if node_pid not in pstree_pids:
-            flags.append("🔴")
+            flags.append("🔴 `[Tàng hình]`")
 
         # Luật 2: Mồ côi — lọc qua whitelist tên + path
         is_orphan = ppid not in processes and node_pid != "4" and ppid != "0"
@@ -156,21 +157,23 @@ def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
 
         # Luật 3: Trùng tên, khác path
         if node_pid in duplicate_flagged:
-            flags.append("🟡")
+            flags.append("🟡 `[Trùng tên]`")
 
         status = (" " + " ".join(flags)) if flags else ""
 
         # Ghi raw node
-        raw_file = f"{node_pid}.json"
+        raw_file = f"pid_{node_pid}.json"
         detail = dict(rec)
         detail["_flags"] = flags
+        if flags:
+            flagged_pids[node_pid] = flags
         with open(RAW_NODES_DIR / raw_file, "w", encoding="utf-8") as f:
             json.dump(detail, f, indent=4, ensure_ascii=False)
 
         connector = "└── " if is_last else "├── "
         line = (
             f"{prefix}{connector}**{name}** (PID: {node_pid}){status}"
-            f" — *{ctime}* | [Details](./raw_nodes/{raw_file})\n"
+            f" — *{ctime}* | [Chi tiết](./raw_nodes/{raw_file})\n"
         )
 
         children = sorted(
@@ -187,7 +190,7 @@ def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
     for i, root_pid in enumerate(roots):
         tree_md += render_tree(root_pid, is_last=(i == len(roots) - 1))
 
-    return tree_md
+    return tree_md, flagged_pids
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +217,16 @@ def build_cross_view_map():
     md = "# PROCESS TREE VIEW\n\n"
     md += "> **Tips:** `Ctrl` + Click `[Chi tiết]` để xem data thô.\n\n"
     md += "> **Cờ:** 🔴 Tàng hình | 🟠 Cha không tồn tại | 🟡 Trùng tên–khác path\n\n"
-    md += build_process_tree(flat_pstree, psscan_pids, duplicate_flagged)
+    tree_md, flagged_pids = build_process_tree(
+        flat_pstree, psscan_pids, duplicate_flagged
+    )
+    md += tree_md
+
+    # Export flagged_pids cho các bước sau
+    flagged_path = OUTPUT_DIR / "flagged_pids.json"
+    with open(flagged_path, "w", encoding="utf-8") as f:
+        json.dump(flagged_pids, f, indent=2, ensure_ascii=False)
+    print(f"    Flagged : {flagged_path} ({len(flagged_pids)} PID)")
 
     with open(MD_OUTPUT, "w", encoding="utf-8") as f:
         f.write(md)
