@@ -145,7 +145,7 @@ def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
 
         # Luật 1: Tàng hình
         if node_pid not in pstree_pids:
-            flags.append("🔴 `[Tàng hình]`")
+            flags.append("🔴")
 
         # Luật 2: Mồ côi — lọc qua whitelist tên + path
         is_orphan = ppid not in processes and node_pid != "4" and ppid != "0"
@@ -156,12 +156,12 @@ def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
 
         # Luật 3: Trùng tên, khác path
         if node_pid in duplicate_flagged:
-            flags.append("🟡 `[Trùng tên]`")
+            flags.append("🟡")
 
         status = (" " + " ".join(flags)) if flags else ""
 
         # Ghi raw node
-        raw_file = f"pid_{node_pid}.json"
+        raw_file = f"{node_pid}.json"
         detail = dict(rec)
         detail["_flags"] = flags
         with open(RAW_NODES_DIR / raw_file, "w", encoding="utf-8") as f:
@@ -170,7 +170,7 @@ def build_process_tree(flat_pstree, psscan_pids, duplicate_flagged):
         connector = "└── " if is_last else "├── "
         line = (
             f"{prefix}{connector}**{name}** (PID: {node_pid}){status}"
-            f" — *{ctime}* | [Chi tiết](./raw_nodes/{raw_file})\n"
+            f" — *{ctime}* | [Details](./raw_nodes/{raw_file})\n"
         )
 
         children = sorted(
