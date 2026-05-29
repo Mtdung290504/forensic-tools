@@ -364,10 +364,6 @@ class ProcessMapModule(ForensicModule):
                 <span class="legend-tag tag-exited">⚪ Đã kết thúc (Exit)</span>
             </div>
             
-            <div class="search-box-wrap">
-                <input type="text" class="input-search" id="proc-search" placeholder="Tìm tên tiến trình, PID, PPID hoặc cờ cảnh báo..." oninput="filterProcessTree()">
-            </div>
-
             <div id="process-tree-root"></div>
         </div>
         """
@@ -516,28 +512,45 @@ class ProcessMapModule(ForensicModule):
             cursor: help;
             font-size: 11px;
             position: relative;
+            display: inline-block;
         }
 
         .mini-flag .tooltip-text {
             visibility: hidden;
+            display: block;
             background-color: #0f172a;
             color: #fff;
             text-align: center;
             border-radius: 6px;
-            padding: 6px 10px;
+            padding: 6px 12px;
             position: absolute;
-            z-index: 10;
-            bottom: 125%;
+            z-index: 99;
+            bottom: 140%;
             left: 50%;
             transform: translateX(-50%);
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: opacity 0.15s ease-in-out;
             width: max-content;
-            max-width: 250px;
+            max-width: 260px;
             font-size: 11px;
-            font-family: sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             font-weight: normal;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            pointer-events: none;
+            word-break: break-all;
+            white-space: normal;
+        }
+
+        .mini-flag .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: #0f172a transparent transparent transparent;
         }
 
         .mini-flag:hover .tooltip-text {
@@ -763,6 +776,12 @@ class ProcessMapModule(ForensicModule):
                         <strong>Hồ sơ gốc:</strong> 
                         <a href="raw_nodes/${n.raw_file}" target="_blank" class="details-link-btn">
                             Xem file JSON thô ↗
+                        </a>
+                    </div>
+                    <div class="item">
+                        <strong>Tra cứu:</strong> 
+                        <a href="${n.google_url}" target="_blank" class="details-link-btn" style="color: #059669;">
+                            Tìm trên Google 🔍
                         </a>
                     </div>
                 `;
@@ -1075,16 +1094,16 @@ class NetworkMapModule(ForensicModule):
                 let orgHTML = '';
                 if (e._label || e._org) {
                     const displayName = e._label || e._org;
-                    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(displayName)}`;
+                    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(displayName + ' Org / ISP')}`;
                     const country = e._country ? ` (${e._country})` : '';
                     orgHTML = `<a href="${searchUrl}" class="org-link" target="_blank">${displayName}</a>${country}`;
                 }
                 
-                // Parse process warnings to ONLY display emojis, with description inside title tooltips
+                // Parse process warnings to ONLY display emojis, with description inside custom HTML tooltips
                 const pTags = processFlags.map(x => {
                     const emoji = x.slice(0, 2).trim();
                     const reason = x.slice(2).trim();
-                    return `<span class="mini-flag" title="${reason}" style="cursor:help; font-size:12px; margin-right:4px;">${emoji}</span>`;
+                    return `<span class="mini-flag" style="margin-right:4px;">${emoji}<span class="tooltip-text">${reason}</span></span>`;
                 }).join(' ');
                 
                 // Reasons tags
