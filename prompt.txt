@@ -1,3 +1,5 @@
+[NHẬN DIỆN KIẾN TRÚC BACKEND - QUY TẮC SINH REGEX CHO YARA HOÀN CHỈNH]
+
 Tôi đang có một script Python tự chế chạy Volatility 3. Khi tôi bật cờ [-regex], chuỗi tôi nhập từ Command Line sẽ được nhét ngầm vào một file rule YARA theo cấu trúc chính xác sau:
 $str = /{pattern}/ ascii nocase
 

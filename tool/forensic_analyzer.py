@@ -66,6 +66,7 @@ except ImportError:
 WINDOWS_INFO_JSON = OUTPUT_DIR / "windows_info_summary.json"
 PSTREE_JSON = OUTPUT_DIR / "pstree.json"
 PSSCAN_JSON = OUTPUT_DIR / "psscan.json"
+GETSIDS_JSON = OUTPUT_DIR / "getsids.json"
 MALFIND_JSON = OUTPUT_DIR / "malfind.json"
 NETSCAN_JSON = OUTPUT_DIR / "netscan.json"
 DLLLIST_JSON = OUTPUT_DIR / "dlllist.json"
@@ -123,6 +124,7 @@ def clean_workspace():
         WINDOWS_INFO_JSON,
         PSTREE_JSON,
         PSSCAN_JSON,
+        GETSIDS_JSON,
         MALFIND_JSON,
         NETSCAN_JSON,
         DLLLIST_JSON,
@@ -312,6 +314,7 @@ class SystemInfoModule(ForensicModule):
                     <tr><td class="key">Kiến trúc</td><td class="val">{sys_parsed.get('architecture', 'N/A')}</td></tr>
                     <tr><td class="key">Build Lab</td><td class="val">{os_info.get('build_lab', 'N/A')}</td></tr>
                     <tr><td class="key">Thư mục System Root</td><td class="val">{sys_parsed.get('system_root', 'N/A')}</td></tr>
+                    <tr><td class="key">Note:</td><td class="val">Profile = [Tên OS][Service Pack][Kiến trúc]</td></tr>
                 </table>
             </div>
             
@@ -347,9 +350,11 @@ class ProcessMapModule(ForensicModule):
         print("\n[=== STEP 2: ANALYZING PROCESS STRUCTURE ===]")
         run_volatility(image_path, "windows.pstree", PSTREE_JSON)
         run_volatility(image_path, "windows.psscan", PSSCAN_JSON)
+        run_volatility(image_path, "windows.getsids", GETSIDS_JSON)
 
         pstree_data = load_vol_json(PSTREE_JSON)
         psscan_data = load_vol_json(PSSCAN_JSON)
+        getsids_data = load_vol_json(GETSIDS_JSON)
 
         if not pstree_data or not psscan_data:
             print("[-] Error: Unable to fetch pstree or psscan data.")
@@ -380,7 +385,7 @@ class ProcessMapModule(ForensicModule):
                 )
 
         print("[+] Building process tree nodes...")
-        nodes, flagged_pids = build_process_tree(pstree_data, psscan_data)
+        nodes, flagged_pids = build_process_tree(pstree_data, psscan_data, getsids_data)
 
         with open(FLAGGED_PIDS_JSON, "w", encoding="utf-8") as f:
             json.dump(flagged_pids, f, indent=2, ensure_ascii=False)
@@ -537,6 +542,41 @@ class ProcessMapModule(ForensicModule):
             padding: 0px 4px;
             border-radius: 3px;
             border: 1px solid #e2e8f0;
+        }
+
+        .user-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #475569;
+            margin-left: 6px;
+            background: #e2e8f0;
+            padding: 0px 5px;
+            border-radius: 3px;
+            border: 1px solid #cbd5e1;
+            white-space: nowrap;
+        }
+        
+        .user-badge.user-system {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #fca5a5;
+        }
+        
+        .user-badge.user-admin {
+            background: #ffedd5;
+            color: #c2410c;
+            border-color: #fdbb2d;
+        }
+
+        .ghost-process .proc-name {
+            color: #94a3b8 !important;
+            font-style: italic;
+            background: transparent !important;
+            border: none !important;
+        }
+        
+        .ghost-process .node-summary {
+            opacity: 0.65;
         }
 
         .flags-container {
@@ -743,7 +783,11 @@ class ProcessMapModule(ForensicModule):
                 const detailsEl = document.createElement('details');
                 detailsEl.className = 'tree-node';
                 detailsEl.id = `node-${n.pid}`;
-                detailsEl.dataset.searchstr = `${n.name} ${n.pid} ${n.ppid} ${n.path} ${n.flag_emojis.join(' ')}`.toLowerCase();
+                detailsEl.dataset.searchstr = `${n.name} ${n.pid} ${n.ppid} ${n.path} ${n.user || ''} ${n.flag_emojis.join(' ')}`.toLowerCase();
+                
+                if (n.is_ghost) {
+                    detailsEl.classList.add('ghost-process');
+                }
                 
                 // Severity color border check
                 let borderClass = '';
@@ -771,6 +815,16 @@ class ProcessMapModule(ForensicModule):
                 pidSpan.className = 'pid-badge';
                 pidSpan.textContent = `PID:${n.pid} PPID:${n.ppid}`;
                 
+                // User info badge
+                const userSpan = document.createElement('span');
+                userSpan.className = 'user-badge';
+                userSpan.textContent = n.is_ghost ? 'N/A' : (n.user || 'Unknown');
+                if (n.user === 'SYSTEM') {
+                    userSpan.classList.add('user-system');
+                } else if (n.user && (n.user.toLowerCase().includes('admin') || n.user === 'LocalSystem')) {
+                    userSpan.classList.add('user-admin');
+                }
+                
                 // Flags
                 const flagsSpan = document.createElement('span');
                 flagsSpan.className = 'flags-container';
@@ -791,7 +845,7 @@ class ProcessMapModule(ForensicModule):
                 arrow.className = 'toggle-arrow';
                 arrow.textContent = '▶';
                 
-                summary.append(indentWrapper, nameSpan, pidSpan, flagsSpan, timeSpan, arrow);
+                summary.append(indentWrapper, nameSpan, pidSpan, userSpan, flagsSpan, timeSpan, arrow);
                 
                 // Details Card Container
                 const detailsCard = document.createElement('div');
@@ -803,25 +857,45 @@ class ProcessMapModule(ForensicModule):
                 const grid = document.createElement('div');
                 grid.className = 'details-grid';
                 
-                grid.innerHTML = `
-                    <div class="item"><strong>Đường dẫn:</strong> <code>${n.path || 'N/A'}</code></div>
-                    <div class="item"><strong>Dòng lệnh (Cmd):</strong> <code>${n.cmd || 'N/A'}</code></div>
-                    <div class="item"><strong>Phiên làm việc (Session ID):</strong> <code>${n.session}</code></div>
-                    <div class="item"><strong>Số luồng (Threads):</strong> <span>${n.threads}</span></div>
-                    <div class="item"><strong>Handles:</strong> <span>${n.handles}</span></div>
-                    <div class="item">
-                        <strong>Hồ sơ gốc:</strong> 
-                        <a href="raw_nodes/${n.raw_file}" target="_blank" class="details-link-btn">
-                            Xem file JSON thô ↗
-                        </a>
-                    </div>
-                    <div class="item">
-                        <strong>Tra cứu:</strong> 
-                        <a href="${n.google_url}" target="_blank" class="details-link-btn" style="color: #059669;">
-                            Tìm trên Google 🔍
-                        </a>
-                    </div>
-                `;
+                if (n.is_ghost) {
+                    grid.innerHTML = `
+                        <div class="item" style="grid-column: 1 / -1;">
+                            <strong>Trạng thái tiến trình:</strong> 
+                            <span style="color: #64748b; font-style: italic;">
+                                Tiến trình cha này không được tìm thấy trong RAM dump (đã kết thúc trước khi dump hoặc bị ẩn rất sâu).
+                                Chỉ phát hiện được sự hiện diện của nó thông qua thuộc tính PPID của các tiến trình con.
+                            </span>
+                        </div>
+                        <div class="item"><strong>PID tiến trình cha:</strong> <code>${n.pid}</code></div>
+                        <div class="item"><strong>Hồ sơ gốc:</strong> 
+                            <a href="raw_nodes/${n.raw_file}" target="_blank" class="details-link-btn">
+                                Xem file JSON thô ↗
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    grid.innerHTML = `
+                        <div class="item"><strong>Đường dẫn:</strong> <code>${n.path || 'N/A'}</code></div>
+                        <div class="item"><strong>Dòng lệnh (Cmd):</strong> <code>${n.cmd || 'N/A'}</code></div>
+                        <div class="item"><strong>Tài khoản (User):</strong> <code>${n.user || 'Unknown'}</code></div>
+                        <div class="item"><strong>SID Tài khoản:</strong> <code>${n.sid || 'N/A'}</code></div>
+                        <div class="item"><strong>Phiên làm việc (Session ID):</strong> <code>${n.session}</code></div>
+                        <div class="item"><strong>Số luồng (Threads):</strong> <span>${n.threads}</span></div>
+                        <div class="item"><strong>Handles:</strong> <span>${n.handles}</span></div>
+                        <div class="item">
+                            <strong>Hồ sơ gốc:</strong> 
+                            <a href="raw_nodes/${n.raw_file}" target="_blank" class="details-link-btn">
+                                Xem file JSON thô ↗
+                            </a>
+                        </div>
+                        <div class="item">
+                            <strong>Tra cứu:</strong> 
+                            <a href="${n.google_url}" target="_blank" class="details-link-btn" style="color: #059669;">
+                                Tìm trên Google ↗
+                            </a>
+                        </div>
+                    `;
+                }
                 detailsCard.appendChild(grid);
                 
                 // Process Flags detail list
@@ -1872,7 +1946,21 @@ def find_suspect_pids(pstree_data, psscan_data):
     return list(suspects)
 
 
-def build_process_tree(pstree_data, psscan_data):
+def build_process_tree(pstree_data, psscan_data, getsids_data=None):
+    pid_to_owner = {}
+    if getsids_data:
+        for rec in getsids_data:
+            pid = str(rec.get("PID"))
+            if pid not in pid_to_owner:
+                owner_name = rec.get("Name")
+                sid_str = rec.get("SID")
+                if owner_name and not isinstance(owner_name, dict):
+                    pid_to_owner[pid] = (str(owner_name), str(sid_str or "N/A"))
+                elif sid_str and not isinstance(sid_str, dict):
+                    pid_to_owner[pid] = (str(sid_str), str(sid_str))
+                else:
+                    pid_to_owner[pid] = ("Unknown", "N/A")
+
     flat_pstree = flatten_pstree(pstree_data)
     psscan_dict = {str(r.get("PID")): r for r in psscan_data}
     duplicate_flagged = build_duplicate_index(flat_pstree)
@@ -1882,6 +1970,28 @@ def build_process_tree(pstree_data, psscan_data):
     for pid, rec in psscan_dict.items():
         if pid not in processes:
             processes[pid] = rec
+
+    # Generate ghost processes for missing parents to maintain hierarchy
+    temp_children = defaultdict(list)
+    for pid, rec in processes.items():
+        ppid = str(rec.get("PPID", "N/A"))
+        temp_children[ppid].append(pid)
+
+    orphan_parents = set()
+    for ppid in temp_children.keys():
+        if ppid not in processes and ppid not in {"0", "N/A", "", "None"}:
+            orphan_parents.add(ppid)
+
+    for oppid in orphan_parents:
+        processes[oppid] = {
+            "PID": int(oppid) if oppid.isdigit() else oppid,
+            "PPID": "N/A",
+            "ImageFileName": "Unknown / Exited parent",
+            "CreateTime": "N/A",
+            "ExitTime": "N/A",
+            "SessionId": "N/A",
+            "is_ghost": True,
+        }
 
     flagged_pids = {}
     children_map = defaultdict(list)
@@ -1902,72 +2012,107 @@ def build_process_tree(pstree_data, psscan_data):
 
     def walk(node_pid, depth=0, is_last=True, prefix=""):
         rec = processes[node_pid]
+        is_ghost = rec.get("is_ghost", False)
         ppid = str(rec.get("PPID", "N/A"))
-        name = str(rec.get("ImageFileName", "Unknown"))
-        session_id = rec.get("SessionId")
-        ctime = format_time(rec.get("CreateTime", "N/A"))
-        extime = rec.get("ExitTime")
-        best_path = get_best_path(rec)
-        cmd = str(rec.get("Cmd") or "")
+
+        if is_ghost:
+            name = f"<{rec.get('ImageFileName', 'Exited / Unknown')}>"
+            session_id = "N/A"
+            ctime = "N/A"
+            extime = None
+            best_path = "N/A"
+            cmd = "Tiến trình cha đã kết thúc (exited) hoặc không tìm thấy trong RAM"
+        else:
+            name = str(rec.get("ImageFileName", "Unknown"))
+            session_id = rec.get("SessionId")
+            ctime = format_time(rec.get("CreateTime", "N/A"))
+            extime = rec.get("ExitTime")
+            best_path = get_best_path(rec)
+            cmd = str(rec.get("Cmd") or "")
 
         flags = []
 
-        # 🔴 Hidden / Stealth
-        if node_pid not in pstree_pids:
-            if extime:
-                flags.append(
-                    ("⚪", "Tiến trình đã Exit — còn dấu vết trong psscan", "exited")
+        if is_ghost:
+            flags.append(
+                (
+                    "⚪",
+                    "Tiến trình cha không tìm thấy trong RAM (đã kết thúc)",
+                    "ghost_parent",
                 )
-            else:
-                flags.append(
-                    (
-                        "🔴",
-                        "Tàng hình — có trong psscan nhưng bị ẩn khỏi pslist",
-                        "hidden",
+            )
+        else:
+            # 🔴 Hidden / Stealth
+            if node_pid not in pstree_pids:
+                if extime:
+                    flags.append(
+                        (
+                            "⚪",
+                            "Tiến trình đã Exit — còn dấu vết trong psscan",
+                            "exited",
+                        )
                     )
-                )
+                else:
+                    flags.append(
+                        (
+                            "🔴",
+                            "Tàng hình — có trong psscan nhưng bị ẩn khỏi pslist",
+                            "hidden",
+                        )
+                    )
 
-        # 🟠 Orphaned
-        is_orphan = ppid not in processes and node_pid != "4" and ppid != "0"
-        if is_orphan:
-            if name.lower() in ORPHAN_WHITELIST:
-                valid_paths, target_session = ORPHAN_WHITELIST[name.lower()]
-                if best_path not in valid_paths or (
-                    target_session is not None and session_id != target_session
-                ):
+            # 🟠 Orphaned
+            parent_node = processes.get(ppid, {})
+            is_parent_ghost = parent_node.get("is_ghost", False)
+            is_orphan = (
+                (ppid not in processes or is_parent_ghost)
+                and node_pid != "4"
+                and ppid != "0"
+            )
+            if is_orphan:
+                if name.lower() in ORPHAN_WHITELIST:
+                    valid_paths, target_session = ORPHAN_WHITELIST[name.lower()]
+                    if best_path not in valid_paths or (
+                        target_session is not None and session_id != target_session
+                    ):
+                        flags.append(
+                            (
+                                "🟠",
+                                "Mồ côi dị thường — cha PPID không tồn tại hoặc đã exited, path/session lệch whitelist",
+                                "orphan_anomaly",
+                            )
+                        )
+                else:
                     flags.append(
                         (
                             "🟠",
-                            "Mồ côi dị thường — cha PPID không tồn tại, path/session lệch whitelist",
-                            "orphan_anomaly",
+                            f"Mồ côi — cha PID {ppid} không tồn tại hoặc đã exited",
+                            "orphan",
                         )
                     )
-            else:
-                flags.append(("🟠", f"Mồ côi — cha PID {ppid} không tồn tại", "orphan"))
 
-        # 🟡 Name Duplication
-        if node_pid in duplicate_flagged:
-            flags.append(
-                (
-                    "🟡",
-                    "Trùng tên với tiến trình khác nhưng khác path — có thể giả mạo hệ thống",
-                    "duplicate",
+            # 🟡 Name Duplication
+            if node_pid in duplicate_flagged:
+                flags.append(
+                    (
+                        "🟡",
+                        "Trùng tên với tiến trình khác nhưng khác path — có thể giả mạo hệ thống",
+                        "duplicate",
+                    )
                 )
-            )
 
-        # 🔵 Suspicious Path
-        if is_suspicious_path(best_path):
-            flags.append(("🔵", f"Path đáng ngờ: {best_path}", "suspicious_path"))
+            # 🔵 Suspicious Path
+            if is_suspicious_path(best_path):
+                flags.append(("🔵", f"Path đáng ngờ: {best_path}", "suspicious_path"))
 
-        # 🟣 RWX memory (Malfind)
-        if node_pid in malfind_map:
-            flags.append(
-                (
-                    "🟣",
-                    f"Vùng nhớ RWX ẩn danh — {len(malfind_map[node_pid])} vùng bị malfind đánh dấu",
-                    "malfind",
+            # 🟣 RWX memory (Malfind)
+            if node_pid in malfind_map:
+                flags.append(
+                    (
+                        "🟣",
+                        f"Vùng nhớ RWX ẩn danh — {len(malfind_map[node_pid])} vùng bị malfind đánh dấu",
+                        "malfind",
+                    )
                 )
-            )
 
         flag_emojis = [f[0] for f in flags]
         detail_flags = [f"{f[0]} {f[1]}" for f in flags]
@@ -1986,6 +2131,10 @@ def build_process_tree(pstree_data, psscan_data):
 
         connector = "└─" if is_last else "├─"
         tree_prefix = prefix + connector
+
+        user_info = pid_to_owner.get(node_pid, ("Unknown", "N/A"))
+        user_name = user_info[0]
+        user_sid = user_info[1]
 
         nodes.append(
             {
@@ -2007,6 +2156,9 @@ def build_process_tree(pstree_data, psscan_data):
                 "handles": rec.get("Handles", "N/A"),
                 "session": session_id if session_id is not None else "N/A",
                 "anomalies": malfind_map.get(node_pid, []),
+                "is_ghost": is_ghost,
+                "user": user_name,
+                "sid": user_sid,
             }
         )
 
