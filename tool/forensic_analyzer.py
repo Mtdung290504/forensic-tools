@@ -42,12 +42,23 @@ except ImportError:
         "smss.exe": ({"c:\\windows\\system32\\smss.exe"}, 0),
     }
     SUSPICIOUS_PATH_KEYWORDS = {
-        "\\temp\\", "\\tmp\\", "\\appdata\\local\\temp\\", "\\appdata\\roaming\\",
-        "\\downloads\\", "\\desktop\\", "\\public\\", "\\recycle", "\\users\\default\\",
+        "\\temp\\",
+        "\\tmp\\",
+        "\\appdata\\local\\temp\\",
+        "\\appdata\\roaming\\",
+        "\\downloads\\",
+        "\\desktop\\",
+        "\\public\\",
+        "\\recycle",
+        "\\users\\default\\",
     }
     SAFE_PATH_PREFIXES = {
-        "c:\\windows\\system32\\", "c:\\windows\\syswow64\\", "c:\\windows\\",
-        "c:\\program files\\", "c:\\program files (x86)\\", "\\systemroot\\",
+        "c:\\windows\\system32\\",
+        "c:\\windows\\syswow64\\",
+        "c:\\windows\\",
+        "c:\\program files\\",
+        "c:\\program files (x86)\\",
+        "\\systemroot\\",
         "\\device\\harddiskvolume",
     }
 
@@ -57,6 +68,7 @@ PSTREE_JSON = OUTPUT_DIR / "pstree.json"
 PSSCAN_JSON = OUTPUT_DIR / "psscan.json"
 MALFIND_JSON = OUTPUT_DIR / "malfind.json"
 NETSCAN_JSON = OUTPUT_DIR / "netscan.json"
+DLLLIST_JSON = OUTPUT_DIR / "dlllist.json"
 FLAGGED_PIDS_JSON = OUTPUT_DIR / "flagged_pids.json"
 RAW_NODES_DIR = OUTPUT_DIR / "raw_nodes"
 NETSCAN_DIR = OUTPUT_DIR / "netscan"
@@ -80,7 +92,15 @@ KNOWN_ORGS = {
     "mozilla": "Mozilla",
     "cdn": "CDN",
 }
-SYSTEM_OWNERS = {"system", "svchost.exe", "services.exe", "lsass.exe", "wininit.exe", "csrss.exe"}
+SYSTEM_OWNERS = {
+    "system",
+    "svchost.exe",
+    "services.exe",
+    "lsass.exe",
+    "wininit.exe",
+    "csrss.exe",
+}
+
 
 # ---------------------------------------------------------------------------
 # Workspace Cleaning
@@ -88,7 +108,7 @@ SYSTEM_OWNERS = {"system", "svchost.exe", "services.exe", "lsass.exe", "wininit.
 def clean_workspace():
     print("[+] Cleaning old workspace...")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Save IP cache if it exists to preserve rate limits
     cache_data = {}
     if NETSCAN_IP_CACHE.exists():
@@ -100,9 +120,15 @@ def clean_workspace():
 
     # Remove target files
     files_to_remove = [
-        WINDOWS_INFO_JSON, PSTREE_JSON, PSSCAN_JSON,
-        MALFIND_JSON, NETSCAN_JSON, FLAGGED_PIDS_JSON,
-        DASHBOARD_HTML, NETSCAN_SUMMARY_JSON
+        WINDOWS_INFO_JSON,
+        PSTREE_JSON,
+        PSSCAN_JSON,
+        MALFIND_JSON,
+        NETSCAN_JSON,
+        DLLLIST_JSON,
+        FLAGGED_PIDS_JSON,
+        DASHBOARD_HTML,
+        NETSCAN_SUMMARY_JSON,
     ]
     for f in files_to_remove:
         if f.exists():
@@ -121,8 +147,9 @@ def clean_workspace():
     if cache_data:
         with open(NETSCAN_IP_CACHE, "w", encoding="utf-8") as f:
             json.dump(cache_data, f, indent=2, ensure_ascii=False)
-            
+
     print("[+] Workspace is clean!")
+
 
 # ---------------------------------------------------------------------------
 # Volatility Execution Helpers
@@ -131,10 +158,11 @@ def run_volatility(image_path, plugin, out_path, extra_args=None):
     cmd = ["python", str(VOLATILITY_PATH), "-f", str(image_path), "-r", "json", plugin]
     if extra_args:
         cmd.extend(extra_args)
-    
+
     print(f"[~] Executing Volatility: {' '.join(cmd)}")
     with open(out_path, "w", encoding="utf-8") as out:
         subprocess.run(cmd, stdout=out)
+
 
 def load_vol_json(filepath):
     if not filepath.exists():
@@ -152,12 +180,13 @@ def load_vol_json(filepath):
         print(f"[-] Error loading JSON from {filepath.name}: {e}")
         return []
 
+
 # ---------------------------------------------------------------------------
 # OOP Module-based Architecture
 # ---------------------------------------------------------------------------
 class ForensicModule:
     """Base class for all forensic analysis and tab rendering modules."""
-    
+
     def __init__(self, module_id, tab_title):
         self.module_id = module_id
         self.tab_title = tab_title
@@ -178,6 +207,7 @@ class ForensicModule:
         """Returns optional JS strings for this module's tab."""
         return ""
 
+
 # ---------------------------------------------------------------------------
 # Module 1: System Info
 # ---------------------------------------------------------------------------
@@ -188,13 +218,15 @@ class SystemInfoModule(ForensicModule):
     def run_analysis(self, image_path, context):
         print("\n[=== STEP 1: READING OS INFORMATION ===]")
         raw_info_txt = OUTPUT_DIR / "windows_info_raw.txt"
-        
+
         cmd = ["python", str(VOLATILITY_PATH), "-f", str(image_path), "windows.info"]
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-        
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+
         with open(raw_info_txt, "w", encoding="utf-8") as f:
             f.write(result.stdout)
-            
+
         if result.returncode != 0:
             print(f"[-] Error running windows.info: {result.stderr}")
             context["os_data"] = {}
@@ -225,7 +257,9 @@ class SystemInfoModule(ForensicModule):
             "architecture": "64-bit" if parsed.get("Is64Bit") == "True" else "32-bit",
             "os": {
                 "name": os_name,
-                "service_pack": f"SP{parsed.get('CSDVersion')}" if parsed.get('CSDVersion') else "",
+                "service_pack": (
+                    f"SP{parsed.get('CSDVersion')}" if parsed.get("CSDVersion") else ""
+                ),
                 "build_lab": parsed.get("NTBuildLab", ""),
             },
             "system_time_utc": parsed.get("SystemTime", "Unknown"),
@@ -234,7 +268,7 @@ class SystemInfoModule(ForensicModule):
             "kernel": {
                 "base_address": parsed.get("Kernel Base"),
                 "symbol_file": parsed.get("Symbols"),
-            }
+            },
         }
 
         summary_str = f"RAM dump identified as {useful['os']['name']} {useful['os']['service_pack']} {useful['architecture']}. System time: {useful['system_time_utc']}."
@@ -248,14 +282,14 @@ class SystemInfoModule(ForensicModule):
                     "System time used as investigation timeline reference.",
                     "System root used to validate suspicious paths.",
                     "Architecture used for process and DLL interpretation.",
-                ]
-            }
+                ],
+            },
         }
 
         with open(WINDOWS_INFO_JSON, "w", encoding="utf-8") as f:
             json.dump(result_data, f, indent=2, ensure_ascii=False)
         print(f"[✓] Saved OS info to {WINDOWS_INFO_JSON.name}")
-        
+
         context["os_data"] = result_data
 
     def generate_html_tab(self, context):
@@ -263,7 +297,7 @@ class SystemInfoModule(ForensicModule):
         sys_parsed = os_data.get("parsed", {})
         os_info = sys_parsed.get("os", {})
         kernel_info = sys_parsed.get("kernel", {})
-        
+
         notes_html = ""
         for note in os_data.get("forensic_context", {}).get("analysis_notes", []):
             notes_html += f"<p>• {note}</p>"
@@ -301,6 +335,7 @@ class SystemInfoModule(ForensicModule):
         """
         return html
 
+
 # ---------------------------------------------------------------------------
 # Module 2: Process Map
 # ---------------------------------------------------------------------------
@@ -334,12 +369,14 @@ class ProcessMapModule(ForensicModule):
                 with open(MALFIND_JSON, "w", encoding="utf-8") as f:
                     json.dump([], f)
             else:
-                print(f"[!] Isolated {len(suspect_pids)} suspect PIDs: {', '.join(suspect_pids)}. Running targeted malfind...")
+                print(
+                    f"[!] Isolated {len(suspect_pids)} suspect PIDs: {', '.join(suspect_pids)}. Running targeted malfind..."
+                )
                 run_volatility(
                     image_path,
                     "windows.malware.malfind",
                     MALFIND_JSON,
-                    extra_args=["--pid"] + suspect_pids
+                    extra_args=["--pid"] + suspect_pids,
                 )
 
         print("[+] Building process tree nodes...")
@@ -357,7 +394,7 @@ class ProcessMapModule(ForensicModule):
             <div class="legend-bar">
                 <span class="legend-title">Bộ lọc bất thường:</span>
                 <span class="legend-tag tag-stealth">🔴 Tàng hình</span>
-                <span class="legend-tag tag-orphan">Orphaned / Mồ côi</span>
+                <span class="legend-tag tag-orphan">Orphaned</span>
                 <span class="legend-tag tag-duplicate">🟡 Trùng tên khác path</span>
                 <span class="legend-tag tag-path">🔵 Path đáng ngờ</span>
                 <span class="legend-tag tag-rwx">🟣 RWX Memory (Malfind)</span>
@@ -842,6 +879,7 @@ class ProcessMapModule(ForensicModule):
         """
         return js
 
+
 # ---------------------------------------------------------------------------
 # Module 3: Network Map
 # ---------------------------------------------------------------------------
@@ -852,7 +890,7 @@ class NetworkMapModule(ForensicModule):
     def run_analysis(self, image_path, context):
         flagged_pids = context.get("flagged_pids", {})
         all_tagged, summary = run_network_analysis(image_path, flagged_pids)
-        
+
         context["network_entries"] = all_tagged
         context["net_summary"] = summary
 
@@ -1192,6 +1230,517 @@ class NetworkMapModule(ForensicModule):
         """
         return js
 
+
+# ---------------------------------------------------------------------------
+# Module 4: DLL List
+# ---------------------------------------------------------------------------
+class DllListModule(ForensicModule):
+    def __init__(self):
+        super().__init__("dll", "📚 Danh sách DLL")
+
+    def run_analysis(self, image_path, context):
+        print("\n[=== STEP 3.5: ANALYZING LOADED DLLS ===]")
+        run_volatility(image_path, "windows.dlllist", DLLLIST_JSON)
+
+        dlllist_data = load_vol_json(DLLLIST_JSON)
+        if not dlllist_data:
+            print("[-] Error: Unable to fetch dlllist data.")
+            context["dll_entries"] = []
+            return
+
+        # Core system DLLs set for hijacking detection
+        CORE_SYSTEM_DLLS = {
+            "ntdll.dll",
+            "kernel32.dll",
+            "kernelbase.dll",
+            "user32.dll",
+            "gdi32.dll",
+            "advapi32.dll",
+            "ws2_32.dll",
+            "wininet.dll",
+            "shell32.dll",
+            "shlwapi.dll",
+            "crypt32.dll",
+            "ole32.dll",
+            "rpcrt4.dll",
+            "dwmapi.dll",
+            "uxtheme.dll",
+            "version.dll",
+            "comctl32.dll",
+            "sechost.dll",
+            "bcrypt.dll",
+            "winhttp.dll",
+        }
+
+        # Build dynamic list of system DLLs based on their loaded paths across all processes
+        system_dlls = set(CORE_SYSTEM_DLLS)
+        for record in dlllist_data:
+            path = record.get("Path")
+            name = record.get("Name")
+            if path and name:
+                path_lower = str(path).lower()
+                name_lower = str(name).lower()
+                if (
+                    path_lower.startswith("c:\\windows\\system32\\")
+                    or path_lower.startswith("c:\\windows\\syswow64\\")
+                    or path_lower.startswith("c:\\windows\\winsxs\\")
+                ):
+                    system_dlls.add(name_lower)
+
+        # Build mapping of PID to Exe directory to detect same-directory side-loading
+        process_exe_dirs = {}
+        for record in dlllist_data:
+            pid = str(record.get("PID", ""))
+            path = record.get("Path")
+            name = record.get("Name")
+            proc = record.get("Process")
+            if pid and path and name and proc:
+                if name.lower() == proc.lower():
+                    exe_dir = str(Path(path).parent).lower()
+                    process_exe_dirs[pid] = exe_dir
+
+        # Gather process nodes metadata from the process tab context
+        process_nodes = context.get("process_nodes", [])
+        process_metadata = {}
+        for node in process_nodes:
+            pid = str(node.get("pid"))
+            process_metadata[pid] = {
+                "name": node.get("name"),
+                "ppid": node.get("ppid"),
+                "flags": node.get("flags", []),  # Parent process flags
+            }
+
+        # Analyze DLL records and group them by host process
+        grouped_dlls = defaultdict(list)
+        for record in dlllist_data:
+            pid = str(record.get("PID", ""))
+            proc_name = str(record.get("Process", "Unknown"))
+            dll_name = record.get("Name")
+            dll_path = record.get("Path")
+            base_addr = record.get("Base")
+            size = record.get("Size")
+            load_time = record.get("LoadTime")
+
+            # Determine anomaly flags & messages
+            anomaly_details = []
+            category_red = False
+            category_orange = False
+
+            # 1. Structural / Format anomalies (Red Flag)
+            if (
+                not dll_name
+                or not dll_path
+                or str(dll_name).lower() == "null"
+                or str(dll_path).lower() == "null"
+            ):
+                anomaly_details.append("• Tên/Đường dẫn trống (PEB Unlinked)")
+                category_red = True
+            else:
+                # Weird extension check
+                name_str = str(dll_name).lower()
+                valid_exts = {
+                    ".dll",
+                    ".exe",
+                    ".sys",
+                    ".drv",
+                    ".ocx",
+                    ".cpl",
+                    ".scr",
+                    ".mui",
+                }
+                has_valid_ext = any(name_str.endswith(ext) for ext in valid_exts)
+                if not has_valid_ext:
+                    anomaly_details.append(
+                        f"• Đuôi mở rộng lạ (Ngụy trang): {dll_name}"
+                    )
+                    category_red = True
+
+            # 2. Path / Hijacking anomalies (Orange Flag)
+            if dll_name and dll_path:
+                name_lower = str(dll_name).lower()
+                path_lower = str(dll_path).lower()
+                is_system_dll = name_lower in system_dlls
+                is_system_path = (
+                    path_lower.startswith("c:\\windows\\system32\\")
+                    or path_lower.startswith("c:\\windows\\syswow64\\")
+                    or path_lower.startswith("c:\\windows\\winsxs\\")
+                )
+
+                # DLL Hijack Check (Core System DLL check & Path mismatch)
+                if is_system_dll and not is_system_path:
+                    anomaly_details.append("• DLL giả mạo hệ thống (Hijacking)")
+                    category_orange = True
+
+                # Same-Directory Side-loading check
+                if pid in process_exe_dirs:
+                    dll_dir = str(Path(dll_path).parent).lower()
+                    exe_dir = process_exe_dirs[pid]
+                    if dll_dir == exe_dir and is_system_dll and not is_system_path:
+                        if "• DLL giả mạo hệ thống (Hijacking)" not in anomaly_details:
+                            anomaly_details.append(
+                                "• DLL giả mạo hệ thống (Hijacking - Same Directory)"
+                            )
+                            category_orange = True
+
+                # Suspicious Path match from config
+                is_suspicious = False
+                for kw in SUSPICIOUS_PATH_KEYWORDS:
+                    if kw in path_lower:
+                        is_suspicious = True
+                        break
+                if is_suspicious:
+                    anomaly_details.append(
+                        f"• Đường dẫn đáng ngờ (Suspicious Path): {dll_path}"
+                    )
+                    category_orange = True
+
+                # Untrusted Path (outside safe folders)
+                is_safe = False
+                for safe in SAFE_PATH_PREFIXES:
+                    if path_lower.startswith(safe):
+                        is_safe = True
+                        break
+                if not is_safe:
+                    anomaly_details.append(
+                        f"• Thư mục nạp lạ (Untrusted Path): {dll_path}"
+                    )
+                    category_orange = True
+
+            # Address formatting
+            base_str = f"0x{base_addr:012x}" if base_addr is not None else "N/A"
+
+            # Size formatting
+            if size is not None:
+                size_str = (
+                    f"{size / (1024 * 1024):.1f} MB"
+                    if size >= 1024 * 1024
+                    else f"{size / 1024:.0f} KB"
+                )
+            else:
+                size_str = "N/A"
+
+            # Load time formatting
+            time_str = format_time(load_time)
+
+            grouped_dlls[pid].append(
+                {
+                    "name": dll_name,
+                    "path": dll_path,
+                    "base_str": base_str,
+                    "size_str": size_str,
+                    "time_str": time_str,
+                    "category_red": category_red,
+                    "category_orange": category_orange,
+                    "anomaly_details": anomaly_details,
+                }
+            )
+
+        # Group and build final JSON payloads for JS mapping
+        dll_groups = []
+        for pid, pid_dlls in grouped_dlls.items():
+            parent_flags = []
+            host_name = "Unknown"
+
+            if pid in process_metadata:
+                host_name = process_metadata[pid]["name"]
+                for pf in process_metadata[pid]["flags"]:
+                    parent_flags.append(pf)
+            else:
+                if pid not in {"0", "4", ""}:
+                    parent_flags.append(
+                        [
+                            "🔴",
+                            "Tiến trình tàng hình — có trong dlllist nhưng ẩn khỏi pstree/psscan",
+                            "hidden_process",
+                        ]
+                    )
+
+            has_dll_red = any(d["category_red"] for d in pid_dlls)
+            has_dll_orange = any(d["category_orange"] for d in pid_dlls)
+
+            dll_groups.append(
+                {
+                    "pid": pid,
+                    "name": host_name,
+                    "parent_flags": parent_flags,
+                    "dll_count": len(pid_dlls),
+                    "has_red": has_dll_red,
+                    "has_orange": has_dll_orange,
+                    "dlls": pid_dlls,
+                }
+            )
+
+        # Sort: priority with warning signs goes to top
+        def get_sort_key(g):
+            score = 0
+            if g["has_red"] or any(f[0] in {"🔴", "🟣"} for f in g["parent_flags"]):
+                score += 1000
+            if g["has_orange"] or any(f[0] in {"🟠", "🔵"} for f in g["parent_flags"]):
+                score += 100
+            pid_num = int(g["pid"]) if g["pid"].isdigit() else 999999
+            return (-score, pid_num)
+
+        dll_groups.sort(key=get_sort_key)
+        context["dll_entries"] = dll_groups
+
+    def generate_html_tab(self, context):
+        html = """
+        <div class="tree-container">
+            <div class="net-controls">
+                <div class="filter-group">
+                    <button class="btn-filter active" id="btn-dll-warn" onclick="toggleDllWarnOnly()">⚠️ Chỉ hiện có cảnh báo</button>
+                    <button class="btn-filter" id="btn-dll-red" onclick="toggleDllFlag('red')">🔴 Có cờ cấu trúc</button>
+                    <button class="btn-filter" id="btn-dll-orange" onclick="toggleDllFlag('orange')">🟠 Có cờ đường dẫn</button>
+                </div>
+                <div class="sep" style="width:1px; height:20px; background:var(--border-color)"></div>
+                <input type="text" class="input-search" id="dll-search" style="flex:initial; width:280px; margin-left:auto" placeholder="Tìm PID, Tiến trình, DLL, Path..." oninput="applyDllFilters()">
+            </div>
+
+            <div id="dll-list-root"></div>
+        </div>
+        """
+        return html
+
+    def get_css(self):
+        css = """
+        /* DLL List Tab Styling */
+        .dll-proc-node {
+            margin-bottom: 8px;
+        }
+        .dll-proc-node .node-summary {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            padding: 10px 14px;
+            height: auto;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .dll-proc-node[open] > .node-summary {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            background: #f8fafc;
+        }
+        .dll-proc-node .node-details-card {
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background: #ffffff;
+            margin-top: 0;
+            margin-left: 0 !important;
+            margin-right: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            overflow: hidden;
+        }
+        .dll-row td {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 8px 10px;
+        }
+        """
+        return css
+
+    def get_js(self):
+        js = """
+        // DLL List Controller
+        let activeDllWarnOnly = true;
+        let activeDllFlags = new Set(); // 'red', 'orange'
+
+        function renderDllList() {
+            const container = document.getElementById('dll-list-root');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            DLL_GROUPS.forEach(g => {
+                const details = document.createElement('details');
+                details.className = 'tree-node dll-proc-node';
+                details.id = `dll-node-${g.pid}`;
+                
+                const summary = document.createElement('summary');
+                summary.className = 'node-summary';
+                
+                // Process Name Badge
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'proc-name';
+                nameSpan.textContent = `${g.name} (PID: ${g.pid})`;
+                if (g.parent_flags.length > 0 || g.has_red || g.has_orange) {
+                    nameSpan.classList.add('has-anomaly');
+                }
+                
+                // Parent Process Flags
+                const pFlagsSpan = document.createElement('span');
+                pFlagsSpan.className = 'flags-container';
+                g.parent_flags.forEach(([emoji, reason]) => {
+                    const f = document.createElement('span');
+                    f.className = 'mini-flag';
+                    f.innerHTML = `${emoji}<span class="tooltip-text">Tiến trình cha: ${reason}</span>`;
+                    pFlagsSpan.appendChild(f);
+                });
+                
+                // Summary of child DLL warnings
+                const gFlagsSpan = document.createElement('span');
+                gFlagsSpan.className = 'flags-container';
+                gFlagsSpan.style.marginLeft = '12px';
+                if (g.has_red) {
+                    const f = document.createElement('span');
+                    f.className = 'mini-flag';
+                    f.innerHTML = `🔴<span class="tooltip-text">Chứa DLL có bất thường cấu trúc/định dạng</span>`;
+                    gFlagsSpan.appendChild(f);
+                }
+                if (g.has_orange) {
+                    const f = document.createElement('span');
+                    f.className = 'mini-flag';
+                    f.innerHTML = `🟠<span class="tooltip-text">Chứa DLL có bất thường đường dẫn/nạp tệp</span>`;
+                    gFlagsSpan.appendChild(f);
+                }
+                
+                // DLL Count Badge
+                const countBadge = document.createElement('span');
+                countBadge.className = 'pid-badge';
+                countBadge.textContent = `${g.dll_count} DLLs`;
+                
+                // Toggle arrow
+                const arrow = document.createElement('span');
+                arrow.className = 'toggle-arrow';
+                arrow.textContent = '▶';
+                
+                summary.append(nameSpan, pFlagsSpan, gFlagsSpan, countBadge, arrow);
+                
+                // Table of DLLs loaded by this process
+                const detailsCard = document.createElement('div');
+                detailsCard.className = 'node-details-card';
+                
+                const tableWrap = document.createElement('div');
+                tableWrap.className = 'table-wrap';
+                
+                const table = document.createElement('table');
+                table.className = 'net-table';
+                
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">Cảnh báo</th>
+                            <th>Base Address</th>
+                            <th>Size</th>
+                            <th>Load Time</th>
+                            <th>DLL Name</th>
+                            <th>Path</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${g.dlls.map(d => {
+                            const dFlags = [];
+                            if (d.category_red) dFlags.push('red');
+                            if (d.category_orange) dFlags.push('orange');
+                            
+                            // Build flags HTML
+                            let flagsHTML = '';
+                            if (d.category_red) {
+                                const redDetails = d.anomaly_details.filter(x => x.includes('Trống') || x.includes('lạ') || x.includes('PEB'));
+                                flagsHTML += `<span class="mini-flag" style="margin-right:4px;">🔴<span class="tooltip-text">${redDetails.join('<br>')}</span></span>`;
+                            }
+                            if (d.category_orange) {
+                                const orangeDetails = d.anomaly_details.filter(x => x.includes('giả mạo') || x.includes('đáng ngờ') || x.includes('nạp lạ') || x.includes('Hijack') || x.includes('Path') || x.includes('Prefix'));
+                                flagsHTML += `<span class="mini-flag" style="margin-right:4px;">🟠<span class="tooltip-text">${orangeDetails.join('<br>')}</span></span>`;
+                            }
+                            
+                            return `
+                                <tr class="dll-row" data-flags="${dFlags.join(' ')}" data-search="${d.name || ''} ${d.path || ''}">
+                                    <td style="text-align: center;">${flagsHTML}</td>
+                                    <td><code>${d.base_str}</code></td>
+                                    <td><code>${d.size_str}</code></td>
+                                    <td><code>${d.time_str}</code></td>
+                                    <td style="font-weight: 600; color: var(--text-secondary);">${d.name || 'N/A'}</td>
+                                    <td style="word-break: break-all; white-space: normal;"><code>${d.path || 'N/A'}</code></td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                `;
+                
+                tableWrap.appendChild(table);
+                detailsCard.appendChild(tableWrap);
+                details.append(summary, detailsCard);
+                
+                // Set data attributes for searching and filtering
+                const searchList = [g.pid, g.name].concat(g.dlls.map(d => `${d.name || ''} ${d.path || ''}`)).join(' ').toLowerCase();
+                details.dataset.search = searchList;
+                details.dataset.has_red = g.has_red;
+                details.dataset.has_orange = g.has_orange;
+                details.dataset.has_any_warn = (g.parent_flags.length > 0 || g.has_red || g.has_orange) ? 'true' : 'false';
+                
+                container.appendChild(details);
+            });
+            
+            applyDllFilters();
+        }
+
+        function toggleDllWarnOnly() {
+            activeDllWarnOnly = !activeDllWarnOnly;
+            document.getElementById('btn-dll-warn').classList.toggle('active', activeDllWarnOnly);
+            applyDllFilters();
+        }
+
+        function toggleDllFlag(flag) {
+            const btn = document.getElementById(`btn-dll-${flag}`);
+            if (activeDllFlags.has(flag)) {
+                activeDllFlags.delete(flag);
+                btn.classList.remove('active');
+            } else {
+                activeDllFlags.add(flag);
+                btn.classList.add('active');
+            }
+            applyDllFilters();
+        }
+
+        function applyDllFilters() {
+            const q = document.getElementById('dll-search').value.toLowerCase().trim();
+            const nodes = document.querySelectorAll('.dll-proc-node');
+            
+            nodes.forEach(n => {
+                const hasRed = n.dataset.has_red === 'true';
+                const hasOrange = n.dataset.has_orange === 'true';
+                const hasAnyWarn = n.dataset.has_any_warn === 'true';
+                
+                let matchWarn = true;
+                if (activeDllWarnOnly) {
+                    matchWarn = hasAnyWarn;
+                }
+                
+                let matchFlags = true;
+                if (activeDllFlags.size > 0) {
+                    matchFlags = [...activeDllFlags].every(f => {
+                        if (f === 'red') return hasRed;
+                        if (f === 'orange') return hasOrange;
+                        return false;
+                    });
+                }
+                
+                const matchSearch = !q || n.dataset.search.includes(q);
+                
+                const isVisible = matchWarn && matchFlags && matchSearch;
+                n.style.display = isVisible ? '' : 'none';
+                
+                if (isVisible && q) {
+                    n.open = true;
+                    const rows = n.querySelectorAll('.dll-row');
+                    rows.forEach(r => {
+                        const searchstr = r.dataset.search.toLowerCase();
+                        r.style.display = searchstr.includes(q) ? '' : 'none';
+                    });
+                } else if (isVisible) {
+                    const rows = n.querySelectorAll('.dll-row');
+                    rows.forEach(r => r.style.display = '');
+                }
+            });
+        }
+        """
+        return js
+
+
 # ---------------------------------------------------------------------------
 # Dynamic Modules Registry
 # ---------------------------------------------------------------------------
@@ -1199,7 +1748,9 @@ ACTIVE_MODULES = [
     SystemInfoModule(),
     ProcessMapModule(),
     NetworkMapModule(),
+    DllListModule(),
 ]
+
 
 # ---------------------------------------------------------------------------
 # Core Analysis - Step 2 Helper Functions (Process Tree builder)
@@ -1216,6 +1767,7 @@ def is_suspicious_path(path):
             return True
     return False
 
+
 def flatten_pstree(nodes, result=None):
     if result is None:
         result = {}
@@ -1227,6 +1779,7 @@ def flatten_pstree(nodes, result=None):
             flatten_pstree(children, result)
     return result
 
+
 def get_best_path(rec):
     raw_path = str(rec.get("Path") or "").lower().strip()
     audit_path = str(rec.get("Audit") or "").lower().strip()
@@ -1236,6 +1789,7 @@ def get_best_path(rec):
         if len(parts) >= 4:
             return "c:\\" + parts[3]
     return best
+
 
 def build_duplicate_index(flat_processes):
     name_groups = defaultdict(list)
@@ -1251,16 +1805,20 @@ def build_duplicate_index(flat_processes):
                 flagged.add(pid)
     return flagged
 
+
 def build_malfind_index():
     malfind_map = defaultdict(list)
     for entry in load_vol_json(MALFIND_JSON):
         pid = str(entry.get("PID", "N/A"))
-        malfind_map[pid].append({
-            "StartVPN": entry.get("Start VPN"),
-            "Protection": entry.get("Protection"),
-            "Hexdump": entry.get("Hexdump", ""),
-        })
+        malfind_map[pid].append(
+            {
+                "StartVPN": entry.get("Start VPN"),
+                "Protection": entry.get("Protection"),
+                "Hexdump": entry.get("Hexdump", ""),
+            }
+        )
     return malfind_map
+
 
 def format_time(t_str):
     if not t_str or t_str == "N/A":
@@ -1270,6 +1828,7 @@ def format_time(t_str):
         return dt.strftime("%d/%m/%Y %H:%M:%S")
     except Exception:
         return str(t_str)
+
 
 def find_suspect_pids(pstree_data, psscan_data):
     flat_pstree = flatten_pstree(pstree_data)
@@ -1293,11 +1852,13 @@ def find_suspect_pids(pstree_data, psscan_data):
         if pid not in pstree_pids and not extime:
             suspects.add(pid)
 
-        is_orphan = (ppid not in processes and pid != "4" and ppid != "0")
+        is_orphan = ppid not in processes and pid != "4" and ppid != "0"
         if is_orphan:
             if name in ORPHAN_WHITELIST:
                 valid_paths, target_session = ORPHAN_WHITELIST[name]
-                if best_path not in valid_paths or (target_session is not None and session_id != target_session):
+                if best_path not in valid_paths or (
+                    target_session is not None and session_id != target_session
+                ):
                     suspects.add(pid)
             else:
                 suspects.add(pid)
@@ -1309,6 +1870,7 @@ def find_suspect_pids(pstree_data, psscan_data):
             suspects.add(pid)
 
     return list(suspects)
+
 
 def build_process_tree(pstree_data, psscan_data):
     flat_pstree = flatten_pstree(pstree_data)
@@ -1328,8 +1890,12 @@ def build_process_tree(pstree_data, psscan_data):
         children_map[ppid].append(pid)
 
     roots = sorted(
-        [pid for pid, rec in processes.items() if str(rec.get("PPID", "N/A")) not in processes],
-        key=lambda x: int(x) if x.isdigit() else 0
+        [
+            pid
+            for pid, rec in processes.items()
+            if str(rec.get("PPID", "N/A")) not in processes
+        ],
+        key=lambda x: int(x) if x.isdigit() else 0,
     )
     pstree_pids = set(flat_pstree.keys())
     nodes = []
@@ -1349,23 +1915,45 @@ def build_process_tree(pstree_data, psscan_data):
         # 🔴 Hidden / Stealth
         if node_pid not in pstree_pids:
             if extime:
-                flags.append(("⚪", "Tiến trình đã Exit — còn dấu vết trong psscan", "exited"))
+                flags.append(
+                    ("⚪", "Tiến trình đã Exit — còn dấu vết trong psscan", "exited")
+                )
             else:
-                flags.append(("🔴", "Tàng hình — có trong psscan nhưng bị ẩn khỏi pslist", "hidden"))
+                flags.append(
+                    (
+                        "🔴",
+                        "Tàng hình — có trong psscan nhưng bị ẩn khỏi pslist",
+                        "hidden",
+                    )
+                )
 
         # 🟠 Orphaned
-        is_orphan = (ppid not in processes and node_pid != "4" and ppid != "0")
+        is_orphan = ppid not in processes and node_pid != "4" and ppid != "0"
         if is_orphan:
             if name.lower() in ORPHAN_WHITELIST:
                 valid_paths, target_session = ORPHAN_WHITELIST[name.lower()]
-                if best_path not in valid_paths or (target_session is not None and session_id != target_session):
-                    flags.append(("🟠", "Mồ côi dị thường — cha PPID không tồn tại, path/session lệch whitelist", "orphan_anomaly"))
+                if best_path not in valid_paths or (
+                    target_session is not None and session_id != target_session
+                ):
+                    flags.append(
+                        (
+                            "🟠",
+                            "Mồ côi dị thường — cha PPID không tồn tại, path/session lệch whitelist",
+                            "orphan_anomaly",
+                        )
+                    )
             else:
                 flags.append(("🟠", f"Mồ côi — cha PID {ppid} không tồn tại", "orphan"))
 
         # 🟡 Name Duplication
         if node_pid in duplicate_flagged:
-            flags.append(("🟡", "Trùng tên với tiến trình khác nhưng khác path — có thể giả mạo hệ thống", "duplicate"))
+            flags.append(
+                (
+                    "🟡",
+                    "Trùng tên với tiến trình khác nhưng khác path — có thể giả mạo hệ thống",
+                    "duplicate",
+                )
+            )
 
         # 🔵 Suspicious Path
         if is_suspicious_path(best_path):
@@ -1373,7 +1961,13 @@ def build_process_tree(pstree_data, psscan_data):
 
         # 🟣 RWX memory (Malfind)
         if node_pid in malfind_map:
-            flags.append(("🟣", f"Vùng nhớ RWX ẩn danh — {len(malfind_map[node_pid])} vùng bị malfind đánh dấu", "malfind"))
+            flags.append(
+                (
+                    "🟣",
+                    f"Vùng nhớ RWX ẩn danh — {len(malfind_map[node_pid])} vùng bị malfind đánh dấu",
+                    "malfind",
+                )
+            )
 
         flag_emojis = [f[0] for f in flags]
         detail_flags = [f"{f[0]} {f[1]}" for f in flags]
@@ -1393,33 +1987,34 @@ def build_process_tree(pstree_data, psscan_data):
         connector = "└─" if is_last else "├─"
         tree_prefix = prefix + connector
 
-        nodes.append({
-            "pid": node_pid,
-            "ppid": ppid,
-            "name": name,
-            "path": best_path,
-            "cmd": cmd,
-            "ctime": ctime,
-            "depth": depth,
-            "prefix": tree_prefix,
-            "indent": prefix,
-            "is_last": is_last,
-            "flags": flags,
-            "flag_emojis": flag_emojis,
-            "raw_file": raw_file,
-            "google_url": f"https://www.google.com/search?q={name}+process+windows",
-            "threads": rec.get("Threads", "N/A"),
-            "handles": rec.get("Handles", "N/A"),
-            "session": session_id if session_id is not None else "N/A",
-            "anomalies": malfind_map.get(node_pid, [])
-        })
+        nodes.append(
+            {
+                "pid": node_pid,
+                "ppid": ppid,
+                "name": name,
+                "path": best_path,
+                "cmd": cmd,
+                "ctime": ctime,
+                "depth": depth,
+                "prefix": tree_prefix,
+                "indent": prefix,
+                "is_last": is_last,
+                "flags": flags,
+                "flag_emojis": flag_emojis,
+                "raw_file": raw_file,
+                "google_url": f"https://www.google.com/search?q={name}+process+windows",
+                "threads": rec.get("Threads", "N/A"),
+                "handles": rec.get("Handles", "N/A"),
+                "session": session_id if session_id is not None else "N/A",
+                "anomalies": malfind_map.get(node_pid, []),
+            }
+        )
 
         children = sorted(
-            children_map.get(node_pid, []),
-            key=lambda x: int(x) if x.isdigit() else 0
+            children_map.get(node_pid, []), key=lambda x: int(x) if x.isdigit() else 0
         )
         for i, child_pid in enumerate(children):
-            child_is_last = (i == len(children) - 1)
+            child_is_last = i == len(children) - 1
             ext = "    " if is_last else "│   "
             walk(child_pid, depth + 1, child_is_last, prefix + ext)
 
@@ -1427,6 +2022,7 @@ def build_process_tree(pstree_data, psscan_data):
         walk(root_pid, depth=0, is_last=(i == len(roots) - 1), prefix="")
 
     return nodes, flagged_pids
+
 
 # ---------------------------------------------------------------------------
 # Core Analysis - Step 3 Helper Functions (Network connections analysis)
@@ -1446,8 +2042,10 @@ def is_public_ip(ip):
     except ValueError:
         return False
 
+
 def is_wildcard(addr):
     return not addr or addr in {"0.0.0.0", "::", "*"}
+
 
 def load_ip_cache():
     if NETSCAN_IP_CACHE.exists():
@@ -1458,6 +2056,7 @@ def load_ip_cache():
             pass
     return {}
 
+
 def friendly_org(org_str):
     if not org_str:
         return "Unknown"
@@ -1466,6 +2065,7 @@ def friendly_org(org_str):
         if keyword in lower:
             return label
     return org_str
+
 
 def enrich_ips(public_ips):
     cache = load_ip_cache()
@@ -1530,6 +2130,7 @@ def enrich_ips(public_ips):
     print(f"[+] IP Geolocation enrichment done. Cached: {len(cache)}")
     return cache
 
+
 def deduplicate_connections(data):
     seen = set()
     result = []
@@ -1547,6 +2148,7 @@ def deduplicate_connections(data):
             seen.add(key)
             result.append(e)
     return result
+
 
 def tag_net_priority(e, flagged_pids):
     state = (e.get("State") or "").upper()
@@ -1593,9 +2195,10 @@ def tag_net_priority(e, flagged_pids):
         med.append("closed_had_public")
     return "medium", med or ["other"]
 
+
 def run_network_analysis(image_path, flagged_pids):
     run_volatility(image_path, "windows.netscan", NETSCAN_JSON)
-    
+
     try:
         raw_netscan = load_vol_json(NETSCAN_JSON)
     except Exception as e:
@@ -1603,7 +2206,9 @@ def run_network_analysis(image_path, flagged_pids):
         return [], {}
 
     deduped = deduplicate_connections(raw_netscan)
-    public_ips = list({e.get("ForeignAddr") for e in deduped if is_public_ip(e.get("ForeignAddr"))})
+    public_ips = list(
+        {e.get("ForeignAddr") for e in deduped if is_public_ip(e.get("ForeignAddr"))}
+    )
     ip_info = enrich_ips(public_ips)
 
     groups = {"high": [], "medium": [], "low": []}
@@ -1625,13 +2230,13 @@ def run_network_analysis(image_path, flagged_pids):
         priority, reasons = tag_net_priority(e, flagged_pids)
         e["_priority"] = priority
         e["_reasons"] = reasons
-        
+
         # Save connection details JSON
         detail_file = f"entry_{idx:04d}.json"
         with open(NETSCAN_DETAIL_DIR / detail_file, "w", encoding="utf-8") as f:
             json.dump(e, f, indent=4, ensure_ascii=False)
         e["_detail_file"] = f"netscan/detail/{detail_file}"
-        
+
         groups[priority].append(e)
 
     summary = {
@@ -1639,67 +2244,78 @@ def run_network_analysis(image_path, flagged_pids):
         "after_dedup": len(deduped),
         "high": len(groups["high"]),
         "medium": len(groups["medium"]),
-        "low": len(groups["low"])
+        "low": len(groups["low"]),
     }
-    
+
     with open(NETSCAN_SUMMARY_JSON, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
     all_tagged = groups["high"] + groups["medium"] + groups["low"]
     return all_tagged, summary
 
+
 # ---------------------------------------------------------------------------
 # Global Dashboard Compiler
 # ---------------------------------------------------------------------------
 def generate_combined_dashboard(context):
     print("\n[=== STEP 4: GENERATING UNIFIED HTML DASHBOARD ===]")
-    
+
     os_data = context.get("os_data", {})
     evidence_file = os_data.get("evidence_file", "Unknown")
     process_nodes = context.get("process_nodes", [])
     net_summary = context.get("net_summary", {})
-    
+
     flagged_pids_count = len([n for n in process_nodes if len(n["flags"]) > 0])
-    
+
     # 1. Build Tab Navigation Buttons
     tab_buttons_html = ""
     for idx, mod in enumerate(ACTIVE_MODULES):
         active_class = "active" if idx == 0 else ""
         tab_buttons_html += f'<button class="tab-btn {active_class}" onclick="switchTab(event, \'tab-{mod.module_id}\')">{mod.tab_title}</button>\n'
-        
+
     # 2. Build Tab Contents
     tab_contents_html = ""
     for idx, mod in enumerate(ACTIVE_MODULES):
         active_class = "active" if idx == 0 else ""
         tab_contents_html += f'<div id="tab-{mod.module_id}" class="tab-content {active_class}">\n{mod.generate_html_tab(context)}\n</div>\n'
-        
+
     # 3. Collect CSS & JS rules from all modules
     combined_css = ""
     combined_js = ""
     for mod in ACTIVE_MODULES:
-        combined_css += f"\n/* --- CSS for Module: {mod.module_id} --- */\n" + mod.get_css()
+        combined_css += (
+            f"\n/* --- CSS for Module: {mod.module_id} --- */\n" + mod.get_css()
+        )
         combined_js += f"\n// --- JS for Module: {mod.module_id} ---\n" + mod.get_js()
 
     # Read dashboard template and replace variables (avoids f-string curly brace escaping issues)
     html_template = get_dashboard_html_template()
-    
-    html_output = (html_template
-        .replace("{EVIDENCE_FILE}", evidence_file)
+
+    html_output = (
+        html_template.replace("{EVIDENCE_FILE}", evidence_file)
         .replace("{TOTAL_PROCESSES}", str(len(process_nodes)))
         .replace("{FLAGGED_PROCESSES}", str(flagged_pids_count))
-        .replace("{TOTAL_CONNECTIONS}", str(net_summary.get('after_dedup', 0)))
+        .replace("{TOTAL_CONNECTIONS}", str(net_summary.get("after_dedup", 0)))
         .replace("{TAB_BUTTONS}", tab_buttons_html)
         .replace("{TAB_CONTENTS}", tab_contents_html)
         .replace("{EMBEDDED_CSS}", combined_css)
         .replace("{EMBEDDED_JS}", combined_js)
         .replace("{PROCESS_NODES_JSON}", json.dumps(process_nodes, ensure_ascii=False))
-        .replace("{NETWORK_ENTRIES_JSON}", json.dumps(context.get("network_entries", []), ensure_ascii=False))
+        .replace(
+            "{NETWORK_ENTRIES_JSON}",
+            json.dumps(context.get("network_entries", []), ensure_ascii=False),
+        )
+        .replace(
+            "{DLL_ENTRIES_JSON}",
+            json.dumps(context.get("dll_entries", []), ensure_ascii=False),
+        )
     )
-    
+
     with open(DASHBOARD_HTML, "w", encoding="utf-8") as f:
         f.write(html_output)
-        
+
     print(f"[✓] Saved Unified Dashboard to {DASHBOARD_HTML.name}")
+
 
 # ---------------------------------------------------------------------------
 # HTML Core Dashboard Base Template
@@ -1983,6 +2599,7 @@ header {
 // Combined injected data from analysis
 const PROCESSES = {PROCESS_NODES_JSON};
 const NETWORK = {NETWORK_ENTRIES_JSON};
+const DLL_GROUPS = {DLL_ENTRIES_JSON};
 
 // Tab Switcher Controller
 function switchTab(evt, tabId) {
@@ -2003,11 +2620,13 @@ function switchTab(evt, tabId) {
 window.onload = function() {
     if (typeof renderProcessTree === 'function') renderProcessTree();
     if (typeof renderNetworkTable === 'function') renderNetworkTable();
+    if (typeof renderDllList === 'function') renderDllList();
 };
 </script>
 </body>
 </html>
 """
+
 
 # ---------------------------------------------------------------------------
 # Main Runner Pipeline
@@ -2032,7 +2651,7 @@ def main():
         "process_nodes": [],
         "flagged_pids": {},
         "network_entries": [],
-        "net_summary": {}
+        "net_summary": {},
     }
 
     # Initialize workspace
@@ -2049,6 +2668,7 @@ def main():
     print(f"    Dashboard: {DASHBOARD_HTML.resolve()}")
     print(f"    Nodes details: {RAW_NODES_DIR.resolve()}")
     print(f"    Connection details: {NETSCAN_DETAIL_DIR.resolve()}")
+
 
 if __name__ == "__main__":
     main()
