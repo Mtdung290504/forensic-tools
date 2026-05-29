@@ -1,0 +1,12 @@
+Tôi đang có một script Python tự chế chạy Volatility 3. Khi tôi bật cờ [-regex], chuỗi tôi nhập từ Command Line sẽ được nhét ngầm vào một file rule YARA theo cấu trúc chính xác sau:
+$str = /{pattern}/ ascii nocase
+
+Vì đặc thù trình biên dịch YARA Compiler và cơ chế bắt tham số, khi sinh Regex bạn PHẢI TUÂN THỦ TUYỆT ĐỐI các quy tắc sau:
+
+1. KHÔNG ĐƯỢC kèm cặp dấu /.../ ở hai đầu chuỗi trả về (vì code Python của tôi đã tự bọc rồi). Chỉ trả về phần LÕI Regex.
+2. CRITICAL ERROR CẦN NÉ: Nếu trong nội dung Regex có chứa ký tự xuyệt thuận ( / ), bạn BẮT BUỘC phải che chắn nó thành ( \/ ). Nếu không, YARA sẽ hiểu lầm đó là dấu kết thúc hàm và làm sập hệ thống (Syntax Error).
+3. Ký tự xuyệt ngược ( \ ) đại diện cho đường dẫn thư mục Windows phải được viết là ( \\ ) để YARA hiểu là một ký tự literal backslash.
+4. Luôn bọc kết quả trong dấu nháy đơn ' ' để an toàn khi chạy trên PowerShell.
+
+Mẫu yêu cầu hiện tại: Hãy sinh cho tôi duy nhất dòng lệnh chạy Terminal để tìm kiếm thực thể sau: [tất cả file có đuôi exe]
+Ví dụ output đúng định dạng: python .\tool\mem-hunter.py .\ram_dump\MemoryDump.mem 5896 'https?:\/\/77\.91\.124\.20\/[a-zA-Z0-9\.\/_~-]+\.php' -regex
