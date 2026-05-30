@@ -17,7 +17,7 @@ Sửa biến VOLATILITY_PATH trong `tools\config.py` tùy vào cấu trúc thư 
 Chạy:
 
 ```bash
-python .\tool\forensic_analyzer.py <path_to_memory_dump>
+python .\tool\forensic_analyzer.py <path_to_memory_dump> [-full] # -full sẽ malfind lên toàn bộ tiến trình thay vì chỉ những tiến trình có cờ
 # e.g.
 python .\tool\forensic_analyzer.py .\ram_dump\MemoryDump.mem
 ```
