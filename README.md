@@ -50,12 +50,12 @@ Cài đặt và chạy xem [tại đây](./how-to-run.md)
 - **Gom nhóm theo Tiến trình**: Nạp danh sách DLL từ `windows.dlllist` và gom nhóm hiển thị dưới dạng collapsible theo từng tiến trình chứa để phục vụ phân tích ngữ cảnh.
 - **Kế thừa cờ tiến trình**: Tiến trình nạp DLL tự động kế thừa và hiển thị cờ cảnh báo của tiến trình nạp nó (từ Tab Tiến trình) bên cạnh tên của nó.
 - **Cờ cảnh báo DLL**:
-  - `🔴 Bất thường cấu trúc/định dạng` (Stealth & Format Anomaly):
+  - `🔴 Bất thường cấu trúc/định dạng`:
     - _Tên/Đường dẫn trống (PEB Unlinked)_: DLL nạp trong RAM nhưng có tên/path rỗng (dấu hiệu bypass PEB list).
     - _Đuôi mở rộng lạ_: DLL có đuôi không thuộc định dạng thực thi/thư viện chuẩn.
     - _Tiến trình tàng hình_: PID của tiến trình có nạp DLL nhưng không tìm thấy tiến trình trong kết quả `pstree` và `psscan`
-  - `🟠 Bất thường đường dẫn/nạp tệp` (Path & Hijack Anomaly):
-    - _DLL Hijacking/Side-loading_: DLL trùng tên hệ thống nạp ngoài System32, hoặc DLL nạp cùng thư mục chạy với file thực thi và trùng tên DLL hệ thống.
+  - `🟠 Đường dẫn/nạp lệnh bất thường`:
+    - _DLL Hijacking/Side-loading_: DLL trùng tên hệ thống (lấy từ DS cứng + học thêm từ nội dung trong RAM) nạp ngoài System32, hoặc DLL nạp cùng thư mục chạy với file thực thi và trùng tên DLL hệ thống.
     - _Nạp từ thư mục không tin cậy hoặc đáng ngờ_:
       - Quét theo Whitelist: DLL nạp ngoài các phân vùng cài đặt an toàn (C:\Windows, C:\Program Files).
       - Quét theo Blacklist: DLL cố tình nạp vào các thư mục tạm/nhạy cảm (như Temp, AppData, Downloads, Desktop, Recycle Bin...), kể cả khi thư mục đó nằm trong dải phân vùng Windows.
