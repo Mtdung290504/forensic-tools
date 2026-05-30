@@ -399,7 +399,7 @@ class ProcessMapModule(ForensicModule):
             <div class="legend-bar">
                 <span class="legend-title">Bộ lọc bất thường:</span>
                 <span class="legend-tag tag-stealth">🔴 Tàng hình</span>
-                <span class="legend-tag tag-orphan">Orphaned</span>
+                <span class="legend-tag tag-orphan">🟠 Orphaned</span>
                 <span class="legend-tag tag-duplicate">🟡 Trùng tên khác path</span>
                 <span class="legend-tag tag-path">🔵 Path đáng ngờ</span>
                 <span class="legend-tag tag-rwx">🟣 RWX Memory (Malfind)</span>
@@ -1871,12 +1871,13 @@ def build_duplicate_index(flat_processes):
         name = str(rec.get("ImageFileName", "")).lower()
         path = get_best_path(rec)
         name_groups[name].append((pid, path))
-    flagged = set()
+    flagged = {}
     for name, members in name_groups.items():
         paths = {p for _, p in members if p}
         if len(paths) > 1:
             for pid, _ in members:
-                flagged.add(pid)
+                other_pids = [other_pid for other_pid, _ in members if other_pid != pid]
+                flagged[pid] = other_pids
     return flagged
 
 
@@ -2092,10 +2093,11 @@ def build_process_tree(pstree_data, psscan_data, getsids_data=None):
 
             # 🟡 Name Duplication
             if node_pid in duplicate_flagged:
+                other_pids_str = ", ".join(duplicate_flagged[node_pid])
                 flags.append(
                     (
                         "🟡",
-                        "Trùng tên với tiến trình khác nhưng khác path — có thể giả mạo hệ thống",
+                        f"Trùng tên với tiến trình khác nhưng khác path (trùng với PID: {other_pids_str}) — có thể giả mạo hệ thống",
                         "duplicate",
                     )
                 )

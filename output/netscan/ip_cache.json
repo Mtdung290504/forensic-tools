@@ -1,0 +1,128 @@
+{
+  "38.121.43.65": {
+    "org": "Globaltelehost Corp",
+    "label": "Globaltelehost Corp",
+    "country": "United States",
+    "as": "AS63023 GTHost"
+  },
+  "204.79.197.203": {
+    "org": "Microsoft Corporation",
+    "label": "Microsoft",
+    "country": "Canada",
+    "as": "AS8068 Microsoft Corporation"
+  },
+  "52.182.143.208": {
+    "org": "Microsoft Azure One Ds Collector (centralus)",
+    "label": "Microsoft",
+    "country": "United States",
+    "as": "AS8075 Microsoft Corporation"
+  },
+  "20.22.207.36": {
+    "org": "Microsoft Azure Cloud (eastus2)",
+    "label": "Microsoft",
+    "country": "United States",
+    "as": "AS8075 Microsoft Corporation"
+  },
+  "77.91.124.20": {
+    "org": "H2nexus",
+    "label": "H2nexus",
+    "country": "Germany",
+    "as": "AS215730 H2NEXUS LTD"
+  },
+  "204.79.197.237": {
+    "org": "Microsoft Corporation",
+    "label": "Microsoft",
+    "country": "Canada",
+    "as": "AS8068 Microsoft Corporation"
+  },
+  "104.119.188.96": {
+    "org": "Akamai Technologies, Inc.",
+    "label": "Akamai CDN",
+    "country": "United States",
+    "as": "AS20940 Akamai International B.V."
+  },
+  "52.159.127.243": {
+    "org": "Microsoft Azure Cloud (northcentralus)",
+    "label": "Microsoft",
+    "country": "United States",
+    "as": "AS8075 Microsoft Corporation"
+  },
+  "204.79.197.200": {
+    "org": "Microsoft Corporation",
+    "label": "Microsoft",
+    "country": "Canada",
+    "as": "AS8068 Microsoft Corporation"
+  },
+  "52.96.44.162": {
+    "org": "Microsoft Corporation",
+    "label": "Microsoft",
+    "country": "United States",
+    "as": "AS8075 Microsoft Corporation"
+  },
+  "52.109.12.6": {
+    "org": "Microsoft Azure Cloud (eastus)",
+    "label": "Microsoft",
+    "country": "United States",
+    "as": "AS8075 Microsoft Corporation"
+  },
+  "72.51.60.132": {
+    "org": "Hush Communications Canada Inc.",
+    "label": "Hush Communications Canada Inc.",
+    "country": "Canada",
+    "as": "AS13768 Aptum Technologies"
+  },
+  "172.217.10.68": {
+    "org": "Google LLC",
+    "label": "Google",
+    "country": "United States",
+    "as": "AS15169 Google LLC"
+  },
+  "213.209.1.129": {
+    "org": "Italiaonline S.p.A",
+    "label": "Italiaonline S.p.A",
+    "country": "Italy",
+    "as": "AS8660 Italiaonline S.p.A."
+  },
+  "38db:7705:80fa:ffff:38db:7705:80fa:ffff": {
+    "org": "Internet Assigned Numbers Authority",
+    "label": "Internet Assigned Numbers Authority",
+    "country": "Switzerland",
+    "as": ""
+  },
+  "56.219.119.5": {
+    "org": "United States Postal Service",
+    "label": "United States Postal Service",
+    "country": "United States",
+    "as": "AS16509 Amazon.com, Inc."
+  },
+  "35.190.69.156": {
+    "org": "Google Cloud",
+    "label": "Google",
+    "country": "United States",
+    "as": "AS396982 Google LLC"
+  },
+  "212.227.15.9": {
+    "org": "Ionos Inf",
+    "label": "Ionos Inf",
+    "country": "Germany",
+    "as": "AS8560 IONOS SE"
+  },
+  "72.51.60.133": {
+    "org": "Hush Communications Canada Inc.",
+    "label": "Hush Communications Canada Inc.",
+    "country": "Canada",
+    "as": "AS13768 Aptum Technologies"
+  },
+  "172.217.6.195": {
+    "org": "Google LLC",
+    "label": "Google",
+    "country": "United States",
+    "as": "AS15169 Google LLC"
+  },
+  "213.186.33.3": {
+    "org": "OVH SAS",
+    "label": "OVH SAS",
+    "country": "France",
+    "as": "AS16276 OVH SAS"
+  }
+}

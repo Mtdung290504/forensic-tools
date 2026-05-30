@@ -1,6 +1,6 @@
 volatility3-stable
 __pycache__
 raw_nodes
+detail
 ram_dump
-output
 .SysinternalsSuite

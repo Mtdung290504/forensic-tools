@@ -1,0 +1,18 @@
+
+[
+  {
+    "CommitCharge": 56,
+    "Disasm": "\"\n0x400000:\tdec\tebp\n0x400001:\tpop\tedx\n0x400002:\tnop\t\n0x400003:\tadd\tbyte ptr [ebx], al\n0x400005:\tadd\tbyte ptr [eax], al\n0x400007:\tadd\tbyte ptr [eax + eax], al\n0x40000a:\tadd\tbyte ptr [eax], al\"",
+    "End VPN": 4423679,
+    "File output": "Disabled",
+    "Hexdump": "4d 5a 90 00 03 00 00 00 04 00 00 00 ff ff 00 00 b8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00",
+    "Notes": "MZ header",
+    "PID": 5896,
+    "PrivateMemory": 1,
+    "Process": "oneetx.exe",
+    "Protection": "PAGE_EXECUTE_READWRITE",
+    "Start VPN": 4194304,
+    "Tag": "VadS",
+    "__children": []
+  }
+]

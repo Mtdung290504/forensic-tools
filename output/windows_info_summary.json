@@ -1,0 +1,27 @@
+{
+  "evidence_file": "C:\\Forensic\\ram_dump\\MemoryDump.mem",
+  "parsed": {
+    "architecture": "64-bit",
+    "os": {
+      "name": "Windows 10/11",
+      "service_pack": "",
+      "build_lab": ""
+    },
+    "system_time_utc": "2023-05-21 23:02:39+00:00",
+    "system_root": "C:\\Windows",
+    "processors": "4",
+    "kernel": {
+      "base_address": "0xf8076221a000",
+      "symbol_file": "file:///C:/Forensic/volatility3-stable/volatility3/symbols/windows/ntkrnlmp.pdb/68A17FAF3012B7846079AEECDBE0A583-1.json.xz"
+    }
+  },
+  "forensic_context": {
+    "summary": "RAM dump identified as Windows 10/11 64-bit. System time: 2023-05-21 23:02:39+00:00.",
+    "analysis_notes": [
+      "OS version used as baseline for plugin compatibility.",
+      "System time used as investigation timeline reference.",
+      "System root used to validate suspicious paths.",
+      "Architecture used for process and DLL interpretation."
+    ]
+  }
+}

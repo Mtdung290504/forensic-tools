@@ -1,0 +1,35 @@
+{
+  "444": [
+    "⚪ Tiến trình cha không tìm thấy trong RAM (đã kết thúc)"
+  ],
+  "5480": [
+    "🔵 Path đáng ngờ: c:\\users\\tammam\\appdata\\local\\temp\\c3912af058\\oneetx.exe"
+  ],
+  "7696": [
+    "⚪ Tiến trình đã Exit — còn dấu vết trong psscan"
+  ],
+  "5136": [
+    "🟡 Trùng tên với tiến trình khác nhưng khác path (trùng với PID: 464) — có thể giả mạo hệ thống"
+  ],
+  "520": [
+    "⚪ Tiến trình cha không tìm thấy trong RAM (đã kết thúc)"
+  ],
+  "464": [
+    "🟡 Trùng tên với tiến trình khác nhưng khác path (trùng với PID: 5136) — có thể giả mạo hệ thống"
+  ],
+  "2916": [
+    "⚪ Tiến trình cha không tìm thấy trong RAM (đã kết thúc)"
+  ],
+  "7788": [
+    "⚪ Tiến trình đã Exit — còn dấu vết trong psscan",
+    "🟠 Mồ côi — cha PID 2916 không tồn tại hoặc đã exited"
+  ],
+  "8844": [
+    "⚪ Tiến trình cha không tìm thấy trong RAM (đã kết thúc)"
+  ],
+  "5896": [
+    "🟠 Mồ côi — cha PID 8844 không tồn tại hoặc đã exited",
+    "🔵 Path đáng ngờ: c:\\users\\tammam\\appdata\\local\\temp\\c3912af058\\oneetx.exe",
+    "🟣 Vùng nhớ RWX ẩn danh — 1 vùng bị malfind đánh dấu"
+  ]
+}
