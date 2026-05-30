@@ -4,6 +4,8 @@ Công cụ phân tích bộ nhớ RAM (Memory Forensics) tự động dựa trê
 
 Công cụ tuân thủ nguyên tắc forensic cốt lõi: **Không tự ý lọc bỏ dữ liệu (No Filtering), chỉ phân tích đối chiếu và gắn cờ cảnh báo (Flagging Anomalies)** để điều tra viên tự đánh giá và ưu tiên rà soát.
 
+Cài đặt và chạy xem [tại đây](./how-to-run.md)
+
 ---
 
 ## Tiêu chí hoạt động của các Module

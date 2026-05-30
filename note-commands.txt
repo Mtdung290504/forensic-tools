@@ -1,4 +1,0 @@
-Get-FileHash .\backup.zip -Algorithm MD5
-
-python .\tool\forensic_analyzer.py .\ram_dump\MemoryDump.mem
-python .\tool\mem-hunter.py .\ram_dump\MemoryDump.mem 5896 'https?:\/\/77\.91\.124\.20\/[a-zA-Z0-9\.\/_~-]+\.php' -regex
